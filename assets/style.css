@@ -1,0 +1,39 @@
+/* Main dashboard styles */
+body {
+    font-family: 'Arial', sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f9f9f9;
+}
+
+/* Header styles */
+h1 {
+    color: #2c3e50;
+    margin-bottom: 0.5rem;
+}
+
+/* Dropdown styles */
+.Select-control {
+    border-radius: 4px;
+    border: 1px solid #ddd;
+}
+
+.Select-placeholder,
+.Select-menu-outer {
+    color: #555;
+}
+
+/* Graph container */
+.js-plotly-plot {
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    border-radius: 4px;
+    background-color: white;
+    padding: 1rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    h1 {
+        font-size: 1.5rem;
+    }
+} 

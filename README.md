@@ -1,0 +1,77 @@
+# Dash Interactive Visualization Dashboard
+
+A comprehensive Dash web application that demonstrates interactive data visualization with sensor data, AI predictions, Firebase integration, and multiple visualization types.
+
+## Features
+
+### 1. Real Sensor Data Integration
+- Simulated sensor data with realistic patterns
+- API connector for real sensor data
+- File-based data loading
+- Automatic fallback to simulation when other sources unavailable
+
+### 2. AI Prediction Feedback Loop
+- Machine learning models to predict future values
+- Linear regression with preprocessing pipeline
+- Visualization of predictions alongside actual data
+- Automatic model retraining when new data arrives
+
+### 3. Firebase Integration
+- Firestore database connection
+- Save and retrieve sensor data
+- Store AI predictions
+- Graceful fallback when Firebase unavailable
+
+### 4. Advanced Visualizations
+- Interactive time series visualization
+- Multi-metric comparison with dual y-axis
+- Correlation heatmap
+- Statistical distribution analysis
+- Summary statistics table
+
+## Installation
+
+1. Clone this repository
+2. Install the required packages:
+
+```
+pip install -r requirements.txt
+```
+
+## Configuration
+
+### Firebase Setup (Optional)
+1. Create a Firebase project at https://console.firebase.google.com/
+2. Generate a service account key and save as `serviceAccountKey.json` in the project root
+3. The app will automatically detect and use Firebase if configured
+
+### Sensor API Setup (Optional)
+1. Set environment variables for API connection:
+   - `SENSOR_API_ENDPOINT`: URL of your sensor data API
+   - `SENSOR_API_KEY`: API key for authentication
+   - `DATA_SOURCE`: Set to "api" to use API data source
+
+## Running the Application
+
+Run the application with:
+
+```
+python app.py --host=0.0.0.0 --port=8050
+```
+
+Then open your browser and navigate to http://127.0.0.1:8050/
+
+## Project Structure
+
+- `app.py`: Main Dash application
+- `ml_model.py`: Machine learning module for predictions
+- `sensor_data.py`: Sensor data integration module
+- `firebase_config.py`: Firebase integration
+- `assets/style.css`: Custom styling
+
+## Deployment
+
+For production deployment, you can use services like Heroku, AWS, or Azure. The app includes a `server` variable that's required for production deployment on most platforms. 
+
+if __name__ == '__main__':
+    app.run_server(debug=True, host='0.0.0.0', port=8050) 
