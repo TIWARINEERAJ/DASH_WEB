@@ -235,97 +235,138 @@ app.layout = html.Div([
                     };
                 
                     // Initialize Firebase
-                    firebase.initializeApp(firebaseConfig);
+                    try {
+                        // Check if Firebase is already initialized
+                        if (!firebase.apps.length) {
+                            firebase.initializeApp(firebaseConfig);
+                            console.log("Firebase initialized successfully");
+                        } else {
+                            console.log("Firebase already initialized");
+                        }
+                    } catch (error) {
+                        console.error("Firebase initialization error:", error);
+                    }
                     
                     // Set up authentication after document is loaded
                     document.addEventListener('DOMContentLoaded', function() {
                         // Set up auth elements after a short delay to ensure they're in the DOM
                         setTimeout(function() {
-                            const signinButton = document.getElementById('signin-button');
-                            const signupButton = document.getElementById('signup-button');
-                            const signoutButton = document.getElementById('signout-button');
-                            const emailInput = document.getElementById('email-input');
-                            const passwordInput = document.getElementById('password-input');
-                            const authStatus = document.getElementById('auth-status');
-                            
-                            if (!signinButton || !signupButton || !signoutButton) {
-                                console.log("Firebase Auth elements not found");
-                                return;
-                            }
-                            
-                            console.log("Firebase Auth elements found, setting up event listeners");
-                            
-                            // Set up authentication state listener
-                            firebase.auth().onAuthStateChanged(function(user) {
-                                if (user) {
-                                    // User is signed in
-                                    authStatus.innerHTML = `
-                                        <p style="text-align: center; color: green;">
-                                            Signed in as ${user.email}
-                                        </p>
-                                    `;
-                                } else {
-                                    // User is signed out
-                                    authStatus.innerHTML = `
-                                        <p style="text-align: center; color: #666;">
-                                            Not signed in
-                                        </p>
-                                    `;
+                            try {
+                                const signinButton = document.getElementById('signin-button');
+                                const signupButton = document.getElementById('signup-button');
+                                const signoutButton = document.getElementById('signout-button');
+                                const emailInput = document.getElementById('email-input');
+                                const passwordInput = document.getElementById('password-input');
+                                const authStatus = document.getElementById('auth-status');
+                                
+                                if (!signinButton || !signupButton || !signoutButton) {
+                                    console.log("Firebase Auth elements not found");
+                                    return;
                                 }
-                            });
-                            
-                            // Sign In
-                            signinButton.addEventListener('click', function() {
-                                const email = emailInput.value;
-                                const password = passwordInput.value;
                                 
-                                firebase.auth().signInWithEmailAndPassword(email, password)
-                                    .then((userCredential) => {
-                                        // Signed in
-                                        const user = userCredential.user;
-                                        console.log("User signed in:", user.email);
-                                    })
-                                    .catch((error) => {
-                                        console.error("Error signing in:", error);
+                                console.log("Firebase Auth elements found, setting up event listeners");
+                                
+                                // Set up authentication state listener
+                                firebase.auth().onAuthStateChanged(function(user) {
+                                    if (user) {
+                                        // User is signed in
                                         authStatus.innerHTML = `
-                                            <p style="text-align: center; color: red;">
-                                                Error: ${error.message}
+                                            <p style="text-align: center; color: green;">
+                                                Signed in as ${user.email}
                                             </p>
                                         `;
-                                    });
-                            });
-                            
-                            // Sign Up
-                            signupButton.addEventListener('click', function() {
-                                const email = emailInput.value;
-                                const password = passwordInput.value;
-                                
-                                firebase.auth().createUserWithEmailAndPassword(email, password)
-                                    .then((userCredential) => {
-                                        // Signed up
-                                        const user = userCredential.user;
-                                        console.log("User signed up:", user.email);
-                                    })
-                                    .catch((error) => {
-                                        console.error("Error signing up:", error);
+                                    } else {
+                                        // User is signed out
                                         authStatus.innerHTML = `
-                                            <p style="text-align: center; color: red;">
-                                                Error: ${error.message}
+                                            <p style="text-align: center; color: #666;">
+                                                Not signed in
                                             </p>
                                         `;
-                                    });
-                            });
-                            
-                            // Sign Out
-                            signoutButton.addEventListener('click', function() {
-                                firebase.auth().signOut()
-                                    .then(() => {
-                                        console.log("User signed out");
-                                    })
-                                    .catch((error) => {
-                                        console.error("Error signing out:", error);
-                                    });
-                            });
+                                    }
+                                });
+                                
+                                // Sign In
+                                signinButton.addEventListener('click', function() {
+                                    const email = emailInput.value;
+                                    const password = passwordInput.value;
+                                    
+                                    if (!email || !password) {
+                                        authStatus.innerHTML = `
+                                            <p style="text-align: center; color: red;">
+                                                Error: Please enter both email and password
+                                            </p>
+                                        `;
+                                        return;
+                                    }
+                                    
+                                    firebase.auth().signInWithEmailAndPassword(email, password)
+                                        .then((userCredential) => {
+                                            // Signed in
+                                            const user = userCredential.user;
+                                            console.log("User signed in:", user.email);
+                                        })
+                                        .catch((error) => {
+                                            console.error("Error signing in:", error);
+                                            authStatus.innerHTML = `
+                                                <p style="text-align: center; color: red;">
+                                                    Error: ${error.message}
+                                                </p>
+                                            `;
+                                        });
+                                });
+                                
+                                // Sign Up
+                                signupButton.addEventListener('click', function() {
+                                    const email = emailInput.value;
+                                    const password = passwordInput.value;
+                                    
+                                    if (!email || !password) {
+                                        authStatus.innerHTML = `
+                                            <p style="text-align: center; color: red;">
+                                                Error: Please enter both email and password
+                                            </p>
+                                        `;
+                                        return;
+                                    }
+                                    
+                                    if (password.length < 6) {
+                                        authStatus.innerHTML = `
+                                            <p style="text-align: center; color: red;">
+                                                Error: Password should be at least 6 characters
+                                            </p>
+                                        `;
+                                        return;
+                                    }
+                                    
+                                    firebase.auth().createUserWithEmailAndPassword(email, password)
+                                        .then((userCredential) => {
+                                            // Signed up
+                                            const user = userCredential.user;
+                                            console.log("User signed up:", user.email);
+                                        })
+                                        .catch((error) => {
+                                            console.error("Error signing up:", error);
+                                            authStatus.innerHTML = `
+                                                <p style="text-align: center; color: red;">
+                                                    Error: ${error.message}
+                                                </p>
+                                            `;
+                                        });
+                                });
+                                
+                                // Sign Out
+                                signoutButton.addEventListener('click', function() {
+                                    firebase.auth().signOut()
+                                        .then(() => {
+                                            console.log("User signed out");
+                                        })
+                                        .catch((error) => {
+                                            console.error("Error signing out:", error);
+                                        });
+                                });
+                            } catch (error) {
+                                console.error("Error setting up auth:", error);
+                            }
                         }, 1000);
                     });
                 '''),
