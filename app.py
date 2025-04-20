@@ -61,6 +61,9 @@ app = dash.Dash(
 # This is the server variable needed for Render
 server = app.server
 
+# For compatibility with both app:app and app:server in Gunicorn
+application = app.server
+
 # Define metric information
 METRICS = {
     'temperature': {'label': 'Temperature (°C)', 'color': '#FF4136'},
