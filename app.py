@@ -547,6 +547,11 @@ def create_stats_display(stats_data):
     
     return cards
 
-# Run the app
-if __name__ == '__main__':
-    app.run_server(debug=True, host='0.0.0.0', port=8050) 
+# Make app object itself WSGI compatible
+if __name__ != "__main__":
+    # When imported by Gunicorn, app needs to be callable
+    app = app.server
+
+# Run the app if this file is executed directly
+if __name__ == "__main__":
+    app.run_server(debug=True) 
