@@ -80,10 +80,10 @@ with open('public/index.html', 'w') as f:
     
     <div class="button-group">
         <a href="http://127.0.0.1:8050" class="button">Access Local Dashboard</a>
-        <!-- Replace this URL once deployed to Render -->
-        <a href="https://dash-sensor-dashboard.onrender.com" class="button" style="background-color: #FF4136;">Access Deployed Dashboard</a>
+        <!-- Actual Render deployment URL -->
+        <a href="https://dash-web-o40q.onrender.com" class="button" style="background-color: #FF4136;">Access Deployed Dashboard</a>
     </div>
-    <p class="note">Note: The "Access Deployed Dashboard" button will work after you deploy to Render.</p>
+    <p class="note">Your dashboard is now live on Render!</p>
 </body>
 </html>
     ''') 
