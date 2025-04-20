@@ -2,6 +2,11 @@
 
 A comprehensive Dash web application that demonstrates interactive data visualization with sensor data, AI predictions, Firebase integration, and multiple visualization types.
 
+## Deployment URLs
+
+- Firebase (Static Landing Page): https://dashweb-9ec83.web.app
+- Render (Full Application): https://dash-web-o40q.onrender.com
+
 ## Features
 
 ### 1. Real Sensor Data Integration
