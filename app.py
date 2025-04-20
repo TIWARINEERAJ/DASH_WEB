@@ -214,6 +214,122 @@ app.layout = html.Div([
             html.Div([
                 html.H2("Firebase Authentication", style={'textAlign': 'center'}),
                 
+                # Add Firebase SDK scripts directly in the HTML
+                html.Div([
+                    # These are needed because external_scripts don't always load properly in the deployed app
+                    html.Script(src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"),
+                    html.Script(src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"),
+                ], id='firebase-scripts'),
+                
+                # Inline Firebase config script
+                html.Script('''
+                    // Your web app's Firebase configuration
+                    const firebaseConfig = {
+                      apiKey: "AIzaSyAiXABLyYhUCRUygQ7y5xYMIL7JTbhByco",
+                      authDomain: "dashweb-9ec83.firebaseapp.com",
+                      projectId: "dashweb-9ec83",
+                      storageBucket: "dashweb-9ec83.appspot.com",
+                      messagingSenderId: "714939783002",
+                      appId: "1:714939783002:web:e2f3068851379be6394563",
+                      measurementId: "G-HZKF4XTQ0L"
+                    };
+                
+                    // Initialize Firebase
+                    firebase.initializeApp(firebaseConfig);
+                    
+                    // Set up authentication after document is loaded
+                    document.addEventListener('DOMContentLoaded', function() {
+                        // Set up auth elements after a short delay to ensure they're in the DOM
+                        setTimeout(function() {
+                            const signinButton = document.getElementById('signin-button');
+                            const signupButton = document.getElementById('signup-button');
+                            const signoutButton = document.getElementById('signout-button');
+                            const emailInput = document.getElementById('email-input');
+                            const passwordInput = document.getElementById('password-input');
+                            const authStatus = document.getElementById('auth-status');
+                            
+                            if (!signinButton || !signupButton || !signoutButton) {
+                                console.log("Firebase Auth elements not found");
+                                return;
+                            }
+                            
+                            console.log("Firebase Auth elements found, setting up event listeners");
+                            
+                            // Set up authentication state listener
+                            firebase.auth().onAuthStateChanged(function(user) {
+                                if (user) {
+                                    // User is signed in
+                                    authStatus.innerHTML = `
+                                        <p style="text-align: center; color: green;">
+                                            Signed in as ${user.email}
+                                        </p>
+                                    `;
+                                } else {
+                                    // User is signed out
+                                    authStatus.innerHTML = `
+                                        <p style="text-align: center; color: #666;">
+                                            Not signed in
+                                        </p>
+                                    `;
+                                }
+                            });
+                            
+                            // Sign In
+                            signinButton.addEventListener('click', function() {
+                                const email = emailInput.value;
+                                const password = passwordInput.value;
+                                
+                                firebase.auth().signInWithEmailAndPassword(email, password)
+                                    .then((userCredential) => {
+                                        // Signed in
+                                        const user = userCredential.user;
+                                        console.log("User signed in:", user.email);
+                                    })
+                                    .catch((error) => {
+                                        console.error("Error signing in:", error);
+                                        authStatus.innerHTML = `
+                                            <p style="text-align: center; color: red;">
+                                                Error: ${error.message}
+                                            </p>
+                                        `;
+                                    });
+                            });
+                            
+                            // Sign Up
+                            signupButton.addEventListener('click', function() {
+                                const email = emailInput.value;
+                                const password = passwordInput.value;
+                                
+                                firebase.auth().createUserWithEmailAndPassword(email, password)
+                                    .then((userCredential) => {
+                                        // Signed up
+                                        const user = userCredential.user;
+                                        console.log("User signed up:", user.email);
+                                    })
+                                    .catch((error) => {
+                                        console.error("Error signing up:", error);
+                                        authStatus.innerHTML = `
+                                            <p style="text-align: center; color: red;">
+                                                Error: ${error.message}
+                                            </p>
+                                        `;
+                                    });
+                            });
+                            
+                            // Sign Out
+                            signoutButton.addEventListener('click', function() {
+                                firebase.auth().signOut()
+                                    .then(() => {
+                                        console.log("User signed out");
+                                    })
+                                    .catch((error) => {
+                                        console.error("Error signing out:", error);
+                                    });
+                            });
+                        }, 1000);
+                    });
+                '''),
+                
                 # Authentication form
                 html.Div([
                     html.Div([
@@ -239,11 +355,7 @@ app.layout = html.Div([
                 ], style={'maxWidth': '400px', 'margin': '30px auto', 'padding': '20px', 'boxShadow': '0 0 10px rgba(0,0,0,0.1)', 'backgroundColor': 'white', 'borderRadius': '5px'}),
                 
                 # Custom div for Firebase Javascript interaction
-                html.Div(id='firebase-auth-container'),
-                
-                # Include firebase configuration script
-                html.Script(src='/assets/firebase-config.js'),
-                html.Script(src='/assets/firebase-auth.js')
+                html.Div(id='firebase-auth-container')
             ])
         ])
     ]),
@@ -549,8 +661,10 @@ def create_stats_display(stats_data):
 
 # Make app object itself WSGI compatible
 if __name__ != "__main__":
-    # When imported by Gunicorn, app needs to be callable
-    app = app.server
+    # When imported by Gunicorn, make the app object itself callable
+    # by using a trick to reassign the app variable to the underlying server
+    callable_app = app.server
+    app = callable_app
 
 # Run the app if this file is executed directly
 if __name__ == "__main__":
