@@ -1,0 +1,6 @@
+@echo off
+echo Building site...
+python build.py
+echo Deploying to Firebase...
+firebase deploy --only hosting
+echo Done! Your site is available at https://dashweb-9ec83.web.app 

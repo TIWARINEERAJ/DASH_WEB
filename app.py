@@ -12,11 +12,15 @@ from datetime import datetime, timedelta
 from sensor_data import SensorDataManager
 from ml_model import PredictionModel
 from firebase_config import initialize_firebase, save_data_to_firebase, get_data_from_firebase
+from firebase_functions import FirebaseFunctions
 
 # Initialize components
 sensor_manager = SensorDataManager(data_source=os.environ.get("DATA_SOURCE", "simulated"))
 prediction_model = PredictionModel()
 firebase_db = initialize_firebase()
+
+# Initialize Firebase Functions
+firebase_functions = FirebaseFunctions()
 
 # Get sensor data
 df = sensor_manager.get_sensor_data(days=100)
@@ -29,8 +33,15 @@ prediction_df = prediction_model.predict_next_values(df, days_ahead=7)
 
 # Try to save to Firebase (if configured)
 if firebase_db:
-    save_data_to_firebase(firebase_db, "sensor_data", df)
-    save_data_to_firebase(firebase_db, "predictions", prediction_df)
+    print("Attempting to save sensor data to Firebase...")
+    sensor_success = save_data_to_firebase(firebase_db, "sensor_data", df)
+    print(f"Save sensor data to Firebase {'successful' if sensor_success else 'failed'}")
+    
+    print("Attempting to save predictions to Firebase...")
+    pred_success = save_data_to_firebase(firebase_db, "predictions", prediction_df)
+    print(f"Save predictions to Firebase {'successful' if pred_success else 'failed'}")
+else:
+    print("Firebase database connection not established. Check serviceAccountKey.json")
 
 # Initialize the Dash app
 app = dash.Dash(
@@ -38,9 +49,17 @@ app = dash.Dash(
     title="Interactive Visualization Dashboard",
     meta_tags=[
         {"name": "viewport", "content": "width=device-width, initial-scale=1"}
+    ],
+    external_scripts=[
+        "https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js",
+        "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js",
+        "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js",
+        "https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics-compat.js"
     ]
 )
-server = app.server  # Needed for production deployment
+
+# This is the server variable needed for Render
+server = app.server
 
 # Define metric information
 METRICS = {
@@ -58,111 +77,173 @@ app.layout = html.Div([
                style={'textAlign': 'center'}),
     ], style={'padding': '2rem 0'}),
     
-    # Data Source Selection
-    html.Div([
-        html.Div([
-            html.Label("Data Source:"),
-            dcc.RadioItems(
-                id='data-source-selector',
-                options=[
-                    {'label': 'Simulated Data', 'value': 'simulated'},
-                    {'label': 'API Data (if configured)', 'value': 'api'},
-                    {'label': 'File Data (if available)', 'value': 'file'},
-                    {'label': 'Firebase Data (if configured)', 'value': 'firebase'}
-                ],
-                value='simulated',
-                labelStyle={'display': 'inline-block', 'marginRight': '10px'}
-            ),
-        ], style={'margin': '0 auto', 'maxWidth': '600px', 'textAlign': 'center'}),
-    ], style={'margin': '1rem 0'}),
-    
-    # Main content
-    html.Div([
-        # Left Side: Controls
-        html.Div([
-            # Main metric selection
+    # Tabs for different views
+    dcc.Tabs([
+        # Main dashboard tab
+        dcc.Tab(label="Dashboard", children=[
+            # Data Source Selection
             html.Div([
-                html.Label("Select Primary Metric:"),
-                dcc.Dropdown(
-                    id='metric-selector',
-                    options=[
-                        {'label': METRICS[m]['label'], 'value': m}
-                        for m in METRICS
-                    ],
-                    value='temperature',
-                    clearable=False
-                ),
-            ], style={'marginBottom': '20px'}),
+                html.Div([
+                    html.Label("Data Source:"),
+                    dcc.RadioItems(
+                        id='data-source-selector',
+                        options=[
+                            {'label': 'Simulated Data', 'value': 'simulated'},
+                            {'label': 'API Data (if configured)', 'value': 'api'},
+                            {'label': 'File Data (if available)', 'value': 'file'},
+                            {'label': 'Firebase Data (if configured)', 'value': 'firebase'}
+                        ],
+                        value='simulated',
+                        labelStyle={'display': 'inline-block', 'marginRight': '10px'}
+                    ),
+                ], style={'margin': '0 auto', 'maxWidth': '600px', 'textAlign': 'center'}),
+            ], style={'margin': '1rem 0'}),
             
-            # Date range selector
+            # Main content
             html.Div([
-                html.Label("Date Range:"),
-                dcc.DatePickerRange(
-                    id='date-range',
-                    min_date_allowed=df['date'].min(),
-                    max_date_allowed=df['date'].max(),
-                    start_date=df['date'].max() - timedelta(days=30),
-                    end_date=df['date'].max(),
-                ),
-            ], style={'marginBottom': '20px'}),
-            
-            # Show predictions toggle
-            html.Div([
-                html.Label("Show AI Predictions:"),
-                dcc.RadioItems(
-                    id='show-predictions',
-                    options=[
-                        {'label': 'Yes', 'value': 'yes'},
-                        {'label': 'No', 'value': 'no'}
-                    ],
-                    value='yes',
-                    labelStyle={'display': 'inline-block', 'marginRight': '10px'}
-                ),
-            ], style={'marginBottom': '20px'}),
-            
-            # Advanced visualization options
-            html.Div([
-                html.Label("Additional Visualizations:"),
-                dcc.Checklist(
-                    id='additional-visualizations',
-                    options=[
-                        {'label': 'Show All Metrics', 'value': 'all_metrics'},
-                        {'label': 'Show Correlations', 'value': 'correlations'},
-                        {'label': 'Show Statistics', 'value': 'statistics'}
-                    ],
-                    value=[],
-                ),
-            ]),
-            
-            # Refresh data button
-            html.Div([
-                html.Button('Refresh Data', id='refresh-data', n_clicks=0),
-                html.Div(id='refresh-status')
-            ], style={'marginTop': '30px'}),
-            
-        ], style={'width': '25%', 'display': 'inline-block', 'verticalAlign': 'top', 'padding': '10px'}),
+                # Left Side: Controls
+                html.Div([
+                    # Main metric selection
+                    html.Div([
+                        html.Label("Select Primary Metric:"),
+                        dcc.Dropdown(
+                            id='metric-selector',
+                            options=[
+                                {'label': METRICS[m]['label'], 'value': m}
+                                for m in METRICS
+                            ],
+                            value='temperature',
+                            clearable=False
+                        ),
+                    ], style={'marginBottom': '20px'}),
+                    
+                    # Date range selector
+                    html.Div([
+                        html.Label("Date Range:"),
+                        dcc.DatePickerRange(
+                            id='date-range',
+                            min_date_allowed=df['date'].min(),
+                            max_date_allowed=df['date'].max(),
+                            start_date=df['date'].max() - timedelta(days=30),
+                            end_date=df['date'].max(),
+                        ),
+                    ], style={'marginBottom': '20px'}),
+                    
+                    # Show predictions toggle
+                    html.Div([
+                        html.Label("Show AI Predictions:"),
+                        dcc.RadioItems(
+                            id='show-predictions',
+                            options=[
+                                {'label': 'Yes', 'value': 'yes'},
+                                {'label': 'No', 'value': 'no'}
+                            ],
+                            value='yes',
+                            labelStyle={'display': 'inline-block', 'marginRight': '10px'}
+                        ),
+                    ], style={'marginBottom': '20px'}),
+                    
+                    # Advanced visualization options
+                    html.Div([
+                        html.Label("Additional Visualizations:"),
+                        dcc.Checklist(
+                            id='additional-visualizations',
+                            options=[
+                                {'label': 'Show All Metrics', 'value': 'all_metrics'},
+                                {'label': 'Show Correlations', 'value': 'correlations'},
+                                {'label': 'Show Statistics', 'value': 'statistics'}
+                            ],
+                            value=[],
+                        ),
+                    ]),
+                    
+                    # Refresh data button
+                    html.Div([
+                        html.Button('Refresh Data', id='refresh-data', n_clicks=0),
+                        html.Div(id='refresh-status')
+                    ], style={'marginTop': '30px'}),
+                    
+                ], style={'width': '25%', 'display': 'inline-block', 'verticalAlign': 'top', 'padding': '10px'}),
+                
+                # Right Side: Graphs
+                html.Div([
+                    # Main time series graph
+                    html.Div([
+                        dcc.Loading(
+                            id="loading-main-graph",
+                            type="circle",
+                            children=[dcc.Graph(id='time-series-graph')]
+                        )
+                    ], style={'marginBottom': '20px'}),
+                    
+                    # Additional visualizations (hidden by default)
+                    html.Div(id='additional-graphs', children=[
+                        # Will be populated by callback
+                    ]),
+                    
+                    # Statistics panel
+                    html.Div(id='statistics-panel', style={'display': 'none'})
+                    
+                ], style={'width': '75%', 'display': 'inline-block', 'padding': '10px'}),
+            ], style={'display': 'flex', 'flexWrap': 'wrap'}),
+        ]),
         
-        # Right Side: Graphs
-        html.Div([
-            # Main time series graph
+        # Cloud Functions Statistics Tab
+        dcc.Tab(label="Cloud Function Statistics", children=[
             html.Div([
-                dcc.Loading(
-                    id="loading-main-graph",
-                    type="circle",
-                    children=[dcc.Graph(id='time-series-graph')]
-                )
-            ], style={'marginBottom': '20px'}),
-            
-            # Additional visualizations (hidden by default)
-            html.Div(id='additional-graphs', children=[
-                # Will be populated by callback
-            ]),
-            
-            # Statistics panel
-            html.Div(id='statistics-panel', style={'display': 'none'})
-            
-        ], style={'width': '75%', 'display': 'inline-block', 'padding': '10px'}),
-    ], style={'display': 'flex', 'flexWrap': 'wrap'}),
+                html.H2("Statistics from Firebase Cloud Functions", style={'textAlign': 'center'}),
+                
+                # Refresh stats button
+                html.Div([
+                    html.Button('Refresh Statistics', id='refresh-stats', n_clicks=0),
+                    html.Div(id='stats-status')
+                ], style={'margin': '20px auto', 'textAlign': 'center'}),
+                
+                # Stats display
+                html.Div(id='cloud-function-stats', children=[
+                    # Will be populated by callback
+                ], style={'margin': '20px auto', 'maxWidth': '800px'})
+            ])
+        ]),
+        
+        # Firebase Authentication Tab
+        dcc.Tab(label="Firebase Authentication", children=[
+            html.Div([
+                html.H2("Firebase Authentication", style={'textAlign': 'center'}),
+                
+                # Authentication form
+                html.Div([
+                    html.Div([
+                        html.Label("Email:"),
+                        dcc.Input(id="email-input", type="email", placeholder="Enter your email", style={'width': '100%'})
+                    ], style={'marginBottom': '15px'}),
+                    
+                    html.Div([
+                        html.Label("Password:"),
+                        dcc.Input(id="password-input", type="password", placeholder="Enter your password", style={'width': '100%'})
+                    ], style={'marginBottom': '15px'}),
+                    
+                    html.Div([
+                        html.Button("Sign In", id="signin-button", style={'marginRight': '10px'}),
+                        html.Button("Sign Up", id="signup-button"),
+                        html.Button("Sign Out", id="signout-button", style={'marginLeft': '10px'}),
+                    ], style={'marginTop': '20px'}),
+                    
+                    # Auth status display
+                    html.Div(id="auth-status", children=[
+                        html.P("Not signed in", style={'textAlign': 'center', 'color': '#666'})
+                    ], style={'marginTop': '20px', 'padding': '10px', 'backgroundColor': '#f8f9fa', 'borderRadius': '5px'})
+                ], style={'maxWidth': '400px', 'margin': '30px auto', 'padding': '20px', 'boxShadow': '0 0 10px rgba(0,0,0,0.1)', 'backgroundColor': 'white', 'borderRadius': '5px'}),
+                
+                # Custom div for Firebase Javascript interaction
+                html.Div(id='firebase-auth-container'),
+                
+                # Include firebase configuration script
+                html.Script(src='/assets/firebase-config.js'),
+                html.Script(src='/assets/firebase-auth.js')
+            ])
+        ])
+    ]),
     
     # Footer
     html.Footer([
@@ -373,6 +454,95 @@ def update_additional_graphs(selected_visualizations, start_date, end_date, prim
         ]))
     
     return graphs
+
+# New callback for cloud function statistics
+@callback(
+    [Output('cloud-function-stats', 'children'),
+     Output('stats-status', 'children')],
+    Input('refresh-stats', 'n_clicks')
+)
+def update_cloud_function_stats(n_clicks):
+    """Update statistics from Firebase Cloud Functions"""
+    if n_clicks == 0:
+        # Initial load - try to get stats
+        stats = firebase_functions.get_stats()
+        if stats:
+            return create_stats_display(stats), "Statistics loaded successfully"
+        else:
+            return [html.Div([
+                html.P("Cloud Functions not yet set up or unavailable.", style={'textAlign': 'center'}),
+                html.P([
+                    "Follow the instructions to set up Firebase Cloud Functions: ",
+                    html.A("Firebase Setup Instructions", 
+                           href="https://firebase.google.com/docs/functions/get-started",
+                           target="_blank")
+                ], style={'textAlign': 'center'})
+            ])], "Cloud Functions not available"
+    
+    # Refresh button clicked
+    stats = firebase_functions.get_stats()
+    
+    if stats:
+        return create_stats_display(stats), f"Statistics refreshed at {datetime.now().strftime('%H:%M:%S')}"
+    else:
+        return [html.Div([
+            html.P("Unable to retrieve statistics from Cloud Functions.", style={'textAlign': 'center'}),
+            html.P("Make sure you have deployed the Cloud Functions and your app has internet access.", 
+                  style={'textAlign': 'center'})
+        ])], f"Failed to refresh at {datetime.now().strftime('%H:%M:%S')}"
+
+def create_stats_display(stats_data):
+    """Create a display for the statistics data"""
+    if not stats_data or 'stats' not in stats_data or not stats_data['stats']:
+        return [html.P("No statistics available yet.", style={'textAlign': 'center'})]
+    
+    stats_list = stats_data['stats']
+    
+    # Create cards for each statistic
+    cards = []
+    for stat in stats_list:
+        stat_type = stat.get('type', 'unknown')
+        value = stat.get('value', 'N/A')
+        timestamp = stat.get('timestamp', None)
+        
+        # Format timestamp if it exists
+        timestamp_str = "N/A"
+        if timestamp:
+            if isinstance(timestamp, dict) and '_seconds' in timestamp:
+                # Handle Firestore timestamp format
+                timestamp_str = datetime.fromtimestamp(timestamp['_seconds']).strftime('%Y-%m-%d %H:%M:%S')
+            else:
+                # Try to parse as string
+                try:
+                    timestamp_str = datetime.fromisoformat(timestamp).strftime('%Y-%m-%d %H:%M:%S')
+                except:
+                    timestamp_str = str(timestamp)
+        
+        # Create a card
+        card = html.Div([
+            html.H4(stat_type.replace('_', ' ').title(), style={'margin': '0'}),
+            html.H3(f"{value:.2f}" if isinstance(value, (int, float)) else value, 
+                   style={'color': '#0074D9', 'margin': '10px 0'}),
+            html.P(f"Samples: {stat.get('samples', 'N/A')}"),
+            html.P(f"Timestamp: {timestamp_str}", style={'color': '#666', 'fontSize': '0.8rem'})
+        ], style={
+            'padding': '20px',
+            'margin': '10px',
+            'borderRadius': '5px',
+            'boxShadow': '0 2px 5px rgba(0,0,0,0.1)',
+            'backgroundColor': 'white',
+            'display': 'inline-block',
+            'width': 'calc(50% - 40px)',
+            'verticalAlign': 'top'
+        })
+        
+        cards.append(card)
+    
+    # If no cards were created
+    if not cards:
+        return [html.P("No statistics available yet.", style={'textAlign': 'center'})]
+    
+    return cards
 
 # Run the app
 if __name__ == '__main__':

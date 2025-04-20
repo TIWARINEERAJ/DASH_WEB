@@ -20,6 +20,7 @@ A comprehensive Dash web application that demonstrates interactive data visualiz
 - Firestore database connection
 - Save and retrieve sensor data
 - Store AI predictions
+- Cloud Functions for server-side processing
 - Graceful fallback when Firebase unavailable
 
 ### 4. Advanced Visualizations
@@ -28,6 +29,13 @@ A comprehensive Dash web application that demonstrates interactive data visualiz
 - Correlation heatmap
 - Statistical distribution analysis
 - Summary statistics table
+
+### Firebase Web SDK Integration (Optional)
+1. Register your web app in the Firebase Console
+2. Copy your Firebase configuration from the Firebase Console
+3. Update the `assets/firebase-config.js` file with your configuration
+4. Enable Authentication in the Firebase Console (Email/Password provider)
+5. Restart your app and use the Authentication tab for user management
 
 ## Installation
 
@@ -45,6 +53,24 @@ pip install -r requirements.txt
 2. Generate a service account key and save as `serviceAccountKey.json` in the project root
 3. The app will automatically detect and use Firebase if configured
 
+### Firebase Cloud Functions Setup (Optional)
+1. Install Node.js and Firebase CLI
+   ```
+   npm install -g firebase-tools
+   ```
+
+2. Initialize and deploy Firebase Functions
+   ```
+   firebase login
+   firebase init functions
+   ```
+
+3. Copy the Cloud Functions code provided in the `functions/index.js` file
+4. Deploy the functions
+   ```
+   firebase deploy --only functions
+   ```
+
 ### Sensor API Setup (Optional)
 1. Set environment variables for API connection:
    - `SENSOR_API_ENDPOINT`: URL of your sensor data API
@@ -56,7 +82,7 @@ pip install -r requirements.txt
 Run the application with:
 
 ```
-python app.py --host=0.0.0.0 --port=8050
+python app.py
 ```
 
 Then open your browser and navigate to http://127.0.0.1:8050/
@@ -66,8 +92,10 @@ Then open your browser and navigate to http://127.0.0.1:8050/
 - `app.py`: Main Dash application
 - `ml_model.py`: Machine learning module for predictions
 - `sensor_data.py`: Sensor data integration module
-- `firebase_config.py`: Firebase integration
+- `firebase_config.py`: Firebase database integration
+- `firebase_functions.py`: Interface for Firebase Cloud Functions
 - `assets/style.css`: Custom styling
+- `functions/index.js`: Firebase Cloud Functions code
 
 ## Deployment
 
